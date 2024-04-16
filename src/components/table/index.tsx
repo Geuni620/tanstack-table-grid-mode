@@ -66,6 +66,16 @@ export const TableComponents: React.FC = () => {
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [selectedCell, setSelectedCell] = useState<string | null>(null);
+
+  const handleCellClick = (cellId: string) => {
+    setSelectedCell(cellId);
+  };
+
+  const isCellSelected = (cellId: string) => {
+    console.log('cellId', cellId);
+    return selectedCell === cellId;
+  };
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
   const columns = [
@@ -208,12 +218,17 @@ export const TableComponents: React.FC = () => {
               {row.getVisibleCells().map((cell) => (
                 <TableCell
                   key={cell.id}
+                  onClick={() => handleCellClick(cell.id)}
                   style={{
                     width: `${cell.column.getSize()}px`,
                     border: '1px solid gray',
                     textAlign: 'center',
-                    padding: '0.5rem 0.5rem',
+                    padding: '0.5rem',
                     height: '40px',
+                    userSelect: 'none',
+                    backgroundColor: isCellSelected(cell.id)
+                      ? '#D3D3D3'
+                      : 'transparent',
                   }}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
