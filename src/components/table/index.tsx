@@ -61,20 +61,59 @@ const PAGE_SIZE_OPTIONS = [
   },
 ];
 
+type SelectionPoint = { rowIdx: number; colIdx: number };
+type SelectionRange = {
+  start: SelectionPoint | null;
+  end: SelectionPoint | null;
+};
+
 export const TableComponents: React.FC = () => {
   const [data] = useState(DATA);
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [selectedCell, setSelectedCell] = useState<string | null>(null);
+  const [selectionRange, setSelectionRange] = useState<SelectionRange>({
+    start: null,
+    end: null,
+  });
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleCellClick = (cellId: string) => {
-    setSelectedCell(cellId);
+  const handleCellMouseDown = (rowIdx: number, colIdx: number) => {
+    setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+    setIsDragging(true);
   };
 
-  const isCellSelected = (cellId: string) => {
-    console.log('cellId', cellId);
-    return selectedCell === cellId;
+  const handleCellMouseEnter = (rowIdx: number, colIdx: number) => {
+    if (isDragging) {
+      setSelectionRange((prev) => ({ ...prev, end: { rowIdx, colIdx } }));
+    }
+  };
+
+  const handleCellMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleCellClick = (rowIdx: number, colIdx: number) => {
+    if (!isDragging) {
+      setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+    }
+  };
+
+  const isCellSelected = (rowIdx: number, colIdx: number) => {
+    const { start, end } = selectionRange;
+    if (!start || !end) return false;
+
+    const rowStart = Math.min(start.rowIdx, end.rowIdx);
+    const rowEnd = Math.max(start.rowIdx, end.rowIdx);
+    const colStart = Math.min(start.colIdx, end.colIdx);
+    const colEnd = Math.max(start.colIdx, end.colIdx);
+
+    return (
+      rowIdx >= rowStart &&
+      rowIdx <= rowEnd &&
+      colIdx >= colStart &&
+      colIdx <= colEnd
+    );
   };
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
@@ -213,12 +252,15 @@ export const TableComponents: React.FC = () => {
         </TableHeader>
 
         <TableBody>
-          {table.getRowModel().rows.map((row) => (
+          {table.getRowModel().rows.map((row, rowIdx) => (
             <TableRow key={row.id}>
-              {row.getVisibleCells().map((cell) => (
+              {row.getVisibleCells().map((cell, colIdx) => (
                 <TableCell
                   key={cell.id}
-                  onClick={() => handleCellClick(cell.id)}
+                  onMouseDown={() => handleCellMouseDown(rowIdx, colIdx)}
+                  onMouseEnter={() => handleCellMouseEnter(rowIdx, colIdx)}
+                  onMouseUp={handleCellMouseUp}
+                  onClick={() => handleCellClick(rowIdx, colIdx)}
                   style={{
                     width: `${cell.column.getSize()}px`,
                     border: '1px solid gray',
@@ -226,7 +268,7 @@ export const TableComponents: React.FC = () => {
                     padding: '0.5rem',
                     height: '40px',
                     userSelect: 'none',
-                    backgroundColor: isCellSelected(cell.id)
+                    backgroundColor: isCellSelected(rowIdx, colIdx)
                       ? '#D3D3D3'
                       : 'transparent',
                   }}
