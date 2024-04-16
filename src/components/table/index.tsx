@@ -101,6 +101,7 @@ export const TableComponents: React.FC = () => {
 
   const isCellSelected = (rowIdx: number, colIdx: number) => {
     const { start, end } = selectionRange;
+    console.log(start, end);
     if (!start || !end) return false;
 
     const rowStart = Math.min(start.rowIdx, end.rowIdx);
