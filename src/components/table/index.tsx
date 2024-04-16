@@ -63,12 +63,9 @@ const PAGE_SIZE_OPTIONS = [
 
 export const TableComponents: React.FC = () => {
   const [data] = useState(DATA);
-
   const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
-
-  console.log(rowSelection);
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
   const columns = [
@@ -105,7 +102,6 @@ export const TableComponents: React.FC = () => {
           </div>
         );
       },
-
       cell: (props) => <p>{props.getValue()}</p>,
       size: 250,
     }),
@@ -152,18 +148,6 @@ export const TableComponents: React.FC = () => {
       },
     },
   });
-
-  /**
-   * @description: https://youtu.be/CjqG277Hmgg?si=7u3PV5j-giv2cuB8&t=2044
-   */
-  // const taskName =
-  //   columnFilters.find((column) => column.id === 'task')?.value ?? '';
-
-  // const onFilterChange = ({ id, value }: Filter) => {
-  //   setColumnFilters((prev) =>
-  //     prev.filter((column) => column.id !== id).concat({ id, value }),
-  //   );
-  // };
 
   return (
     <>
