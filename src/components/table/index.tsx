@@ -69,7 +69,6 @@ type SelectionRange = {
 
 export const TableComponents: React.FC = () => {
   const [data] = useState(DATA);
-  const [rowSelection, setRowSelection] = useState({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [selectionRange, setSelectionRange] = useState<SelectionRange>({
@@ -101,7 +100,7 @@ export const TableComponents: React.FC = () => {
 
   const isCellSelected = (rowIdx: number, colIdx: number) => {
     const { start, end } = selectionRange;
-    console.log(start, end);
+
     if (!start || !end) return false;
 
     const rowStart = Math.min(start.rowIdx, end.rowIdx);
@@ -119,27 +118,6 @@ export const TableComponents: React.FC = () => {
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
   const columns = [
-    {
-      id: 'select',
-      header: ({ table }: TableProps) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && 'indeterminate')
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }: RowProps) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      size: 50,
-    },
     columnHelper.accessor('task', {
       header: ({ column }) => {
         return (
@@ -182,12 +160,11 @@ export const TableComponents: React.FC = () => {
     getPaginationRowModel: getPaginationRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    onRowSelectionChange: setRowSelection,
+
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
 
     state: {
-      rowSelection,
       columnFilters,
       sorting,
     },
