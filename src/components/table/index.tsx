@@ -1,21 +1,15 @@
-import type { Row as TRow, Table as TTable } from '@tanstack/react-table';
 import {
-  ColumnFiltersState,
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
-  SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { ArrowUpDown } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -36,14 +30,6 @@ interface ColumnDataProps {
   status: Status;
   due?: Date | null;
   notes: string;
-}
-
-interface TableProps {
-  table: TTable<ColumnDataProps>;
-}
-
-interface RowProps {
-  row: TRow<ColumnDataProps>;
 }
 
 const PAGE_SIZE_OPTIONS = [
@@ -69,67 +55,21 @@ type SelectionRange = {
 
 export const TableComponents: React.FC = () => {
   const [data] = useState(DATA);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [selectionRange, setSelectionRange] = useState<SelectionRange>({
     start: null,
     end: null,
   });
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedCellData, setSelectedCellData] = useState<SelectionRange[]>(
+    [],
+  );
 
-  const handleCellMouseDown = (rowIdx: number, colIdx: number) => {
-    setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
-    setIsDragging(true);
-  };
-
-  const handleCellMouseEnter = (rowIdx: number, colIdx: number) => {
-    if (isDragging) {
-      setSelectionRange((prev) => ({ ...prev, end: { rowIdx, colIdx } }));
-    }
-  };
-
-  const handleCellMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleCellClick = (rowIdx: number, colIdx: number) => {
-    if (!isDragging) {
-      setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
-    }
-  };
-
-  const isCellSelected = (rowIdx: number, colIdx: number) => {
-    const { start, end } = selectionRange;
-
-    if (!start || !end) return false;
-
-    const rowStart = Math.min(start.rowIdx, end.rowIdx);
-    const rowEnd = Math.max(start.rowIdx, end.rowIdx);
-    const colStart = Math.min(start.colIdx, end.colIdx);
-    const colEnd = Math.max(start.colIdx, end.colIdx);
-
-    return (
-      rowIdx >= rowStart &&
-      rowIdx <= rowEnd &&
-      colIdx >= colStart &&
-      colIdx <= colEnd
-    );
-  };
+  console.log('selectedCellData', selectedCellData);
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
   const columns = [
     columnHelper.accessor('task', {
-      header: ({ column }) => {
-        return (
-          <div
-            className="flex cursor-pointer items-center justify-center"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          >
-            Task
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </div>
-        );
-      },
+      header: 'Task',
       cell: (props) => <p>{props.getValue()}</p>,
       size: 250,
     }),
@@ -161,14 +101,6 @@ export const TableComponents: React.FC = () => {
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
 
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-
-    state: {
-      columnFilters,
-      sorting,
-    },
-
     initialState: {
       pagination: {
         pageSize: 20,
@@ -176,19 +108,63 @@ export const TableComponents: React.FC = () => {
     },
   });
 
+  const handleCellClick = ({ rowIdx, colIdx }: SelectionPoint) => {
+    if (!isDragging) {
+      setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+      captureSelectedData({
+        start: { rowIdx, colIdx },
+        end: { rowIdx, colIdx },
+      });
+    }
+  };
+
+  const handleCellMouseDown = ({ rowIdx, colIdx }: SelectionPoint) => {
+    setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+    setIsDragging(true);
+    captureSelectedData({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+  };
+
+  const handleCellMouseEnter = ({ rowIdx, colIdx }: SelectionPoint) => {
+    if (isDragging) {
+      setSelectionRange((prev) => {
+        const newRange = { ...prev, end: { rowIdx, colIdx } };
+        captureSelectedData(newRange);
+        return newRange;
+      });
+    }
+  };
+
+  const handleCellMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const captureSelectedData = ({
+    start,
+    end,
+  }: {
+    start: SelectionPoint;
+    end: SelectionPoint;
+  }) => {
+    if (!start || !end) return;
+
+    const rowStart = Math.min(start.rowIdx, end.rowIdx);
+    const rowEnd = Math.max(start.rowIdx, end.rowIdx);
+    const colStart = Math.min(start.colIdx, end.colIdx);
+    const colEnd = Math.max(start.colIdx, end.colIdx);
+
+    const selectedData = data.slice(rowStart, rowEnd + 1).map((row) =>
+      Object.keys(row)
+        .filter((_, index) => index >= colStart && index <= colEnd)
+        .reduce((acc, key) => ({ ...acc, [key]: row[key] }), {}),
+    );
+
+    setSelectedCellData(selectedData);
+  };
+
   return (
     <>
       {/* TableControls */}
       <div className="mb-2 flex items-center justify-between gap-2">
-        <Input
-          className="w-[20%]"
-          type="text"
-          placeholder="Task name"
-          value={(table.getColumn('task')?.getFilterValue() as string) ?? ''}
-          onChange={(e) =>
-            table.getColumn('task')?.setFilterValue(e.target.value)
-          }
-        />
         <select
           className="my-2 rounded-[4px] border-[1px] py-1 pl-2 pr-9 text-sm"
           value={table.getState().pagination.pageSize}
@@ -235,10 +211,10 @@ export const TableComponents: React.FC = () => {
               {row.getVisibleCells().map((cell, colIdx) => (
                 <TableCell
                   key={cell.id}
-                  onMouseDown={() => handleCellMouseDown(rowIdx, colIdx)}
-                  onMouseEnter={() => handleCellMouseEnter(rowIdx, colIdx)}
+                  onMouseDown={() => handleCellMouseDown({ rowIdx, colIdx })}
+                  onMouseEnter={() => handleCellMouseEnter({ rowIdx, colIdx })}
                   onMouseUp={handleCellMouseUp}
-                  onClick={() => handleCellClick(rowIdx, colIdx)}
+                  onClick={() => handleCellClick({ rowIdx, colIdx })}
                   style={{
                     width: `${cell.column.getSize()}px`,
                     border: '1px solid gray',
@@ -246,9 +222,6 @@ export const TableComponents: React.FC = () => {
                     padding: '0.5rem',
                     height: '40px',
                     userSelect: 'none',
-                    backgroundColor: isCellSelected(rowIdx, colIdx)
-                      ? '#D3D3D3'
-                      : 'transparent',
                   }}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
