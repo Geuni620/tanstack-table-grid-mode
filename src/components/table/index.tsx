@@ -9,6 +9,10 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 
+import {
+  getSelectedRange,
+  type SelectionPoint,
+} from '@/components/table/getSelectedRange';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -20,17 +24,20 @@ import {
 } from '@/components/ui/table';
 import DATA from '@/data';
 
-interface Status {
+type Status = {
   id: number;
   name: string;
-}
+};
 
-interface ColumnDataProps {
+type ColumnDataProps = {
   task: string;
   status: Status;
   due?: Date | null;
   notes: string;
-}
+};
+
+type ColumnKeys = keyof ColumnDataProps;
+type ColumnValue = ColumnDataProps[ColumnKeys];
 
 const PAGE_SIZE_OPTIONS = [
   {
@@ -47,19 +54,15 @@ const PAGE_SIZE_OPTIONS = [
   },
 ];
 
-type SelectionPoint = { rowIdx: number; colIdx: number };
-type SelectionRange = {
-  start: SelectionPoint | null;
-  end: SelectionPoint | null;
-};
+type SelectionRange = Record<ColumnKeys, ColumnValue>;
 
 export const TableComponents: React.FC = () => {
-  const [data] = useState(DATA);
-  const [selectionRange, setSelectionRange] = useState<SelectionRange>({
-    start: null,
-    end: null,
-  });
+  const [data] = useState<ColumnDataProps[]>(DATA);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectedRange, setSelectedRange] = useState<{
+    start: SelectionPoint;
+    end: SelectionPoint;
+  } | null>(null);
   const [selectedCellData, setSelectedCellData] = useState<SelectionRange[]>(
     [],
   );
@@ -108,34 +111,23 @@ export const TableComponents: React.FC = () => {
     },
   });
 
-  const handleCellClick = ({ rowIdx, colIdx }: SelectionPoint) => {
-    if (!isDragging) {
-      setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
-      captureSelectedData({
-        start: { rowIdx, colIdx },
-        end: { rowIdx, colIdx },
-      });
-    }
+  const handleCellMouseUp = () => {
+    setIsDragging(false);
   };
 
   const handleCellMouseDown = ({ rowIdx, colIdx }: SelectionPoint) => {
-    setSelectionRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
     setIsDragging(true);
-    captureSelectedData({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+    setSelectedRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
   };
 
   const handleCellMouseEnter = ({ rowIdx, colIdx }: SelectionPoint) => {
-    if (isDragging) {
-      setSelectionRange((prev) => {
-        const newRange = { ...prev, end: { rowIdx, colIdx } };
-        captureSelectedData(newRange);
-        return newRange;
+    if (isDragging && selectedRange) {
+      captureSelectedData({
+        start: selectedRange?.start,
+        end: { rowIdx, colIdx },
       });
+      setSelectedRange({ start: selectedRange.start, end: { rowIdx, colIdx } });
     }
-  };
-
-  const handleCellMouseUp = () => {
-    setIsDragging(false);
   };
 
   const captureSelectedData = ({
@@ -147,18 +139,41 @@ export const TableComponents: React.FC = () => {
   }) => {
     if (!start || !end) return;
 
-    const rowStart = Math.min(start.rowIdx, end.rowIdx);
-    const rowEnd = Math.max(start.rowIdx, end.rowIdx);
-    const colStart = Math.min(start.colIdx, end.colIdx);
-    const colEnd = Math.max(start.colIdx, end.colIdx);
+    const { rowStart, rowEnd, colStart, colEnd } = getSelectedRange({
+      start,
+      end,
+    });
 
-    const selectedData = data.slice(rowStart, rowEnd + 1).map((row) =>
-      Object.keys(row)
-        .filter((_, index) => index >= colStart && index <= colEnd)
-        .reduce((acc, key) => ({ ...acc, [key]: row[key] }), {}),
-    );
+    const selectedData = data.slice(rowStart, rowEnd + 1).map((row) => {
+      return (Object.keys(row) as ColumnKeys[])
+        .slice(colStart, colEnd + 1)
+        .reduce(
+          (
+            acc: Record<ColumnKeys, ColumnDataProps[ColumnKeys]>,
+            key: ColumnKeys,
+          ) => {
+            acc[key] = row[key] as ColumnDataProps[typeof key];
+            return acc;
+          },
+          {} as Record<ColumnKeys, ColumnValue>,
+        );
+    });
 
     setSelectedCellData(selectedData);
+  };
+
+  const isCellSelected = ({ rowIdx, colIdx }: SelectionPoint): boolean => {
+    if (!selectedRange) return false;
+
+    const { rowStart, rowEnd, colStart, colEnd } =
+      getSelectedRange(selectedRange);
+
+    return (
+      rowIdx >= rowStart &&
+      rowIdx <= rowEnd &&
+      colIdx >= colStart &&
+      colIdx <= colEnd
+    );
   };
 
   return (
@@ -214,7 +229,6 @@ export const TableComponents: React.FC = () => {
                   onMouseDown={() => handleCellMouseDown({ rowIdx, colIdx })}
                   onMouseEnter={() => handleCellMouseEnter({ rowIdx, colIdx })}
                   onMouseUp={handleCellMouseUp}
-                  onClick={() => handleCellClick({ rowIdx, colIdx })}
                   style={{
                     width: `${cell.column.getSize()}px`,
                     border: '1px solid gray',
@@ -222,6 +236,9 @@ export const TableComponents: React.FC = () => {
                     padding: '0.5rem',
                     height: '40px',
                     userSelect: 'none',
+                    backgroundColor: isCellSelected({ rowIdx, colIdx })
+                      ? 'lightblue'
+                      : 'white',
                   }}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

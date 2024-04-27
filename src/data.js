@@ -23,51 +23,6 @@ const existingNotes = [
   'Upgrade React & Chakra UI',
 ];
 
-// const DATA = [
-//   {
-//     task: 'Add a New Feature',
-
-//     due: new Date('2023/10/15'),
-//     notes: 'This is a note',
-//   },
-//   {
-//     task: 'Write Integration Tests',
-
-//     due: new Date('2023/09/12'),
-//     notes: 'Use Jest',
-//   },
-//   {
-//     task: 'Add Instagram Integration',
-
-//     due: new Date('2023/09/12'),
-//     notes: '',
-//   },
-//   {
-//     task: 'Cleanup Database',
-
-//     due: new Date('2023/02/15'),
-//     notes: 'Remove old data',
-//   },
-//   {
-//     task: 'Refactor API Endpoints',
-
-//     due: new Date('2023/09/12'),
-//     notes: '',
-//   },
-//   {
-//     task: 'Add Documentation to API',
-
-//     due: new Date('2023/09/12'),
-//     notes: 'Add JS Docs to all endpoints',
-//   },
-//   {
-//     task: 'Update NPM Packages',
-
-//     due: new Date('2023/09/12'),
-//     notes: 'Upgrade React & Chakra UI',
-//   },
-// ];
-
 const generateRandomData = () => {
   const data = [];
   for (let i = 0; i < 100; i++) {
