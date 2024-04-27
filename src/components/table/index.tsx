@@ -257,6 +257,27 @@ export const TableComponents: React.FC = () => {
           {'›'}
         </Button>
       </div>
+
+      <div
+        style={{
+          fontFamily: 'monospace',
+        }}
+        className="mt-2 whitespace-pre rounded-[4px] border border-gray-300 bg-gray-100 p-2"
+      >
+        {JSON.stringify(
+          selectedCellData.map((data) => {
+            return Object.entries(data).reduce(
+              (acc, [key, value]) => ({
+                ...acc,
+                [key]: value,
+              }),
+              {},
+            );
+          }),
+          null,
+          2,
+        )}
+      </div>
     </>
   );
 };
