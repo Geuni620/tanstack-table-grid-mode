@@ -102,6 +102,13 @@ export const TableComponents: React.FC = () => {
   const handleCellMouseDown = ({ rowIdx, colIdx }: SelectionPoint) => {
     setIsDragging(true);
     setSelectedRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+
+    /**
+     * @description
+     * mouseEnter가 mouseDown 보다 먼저 발생하기 때문에, 첫 셀을 클릭하면 capureSelectedData에 반영되지 않음
+     * 즉, mouseDown 이벤트에서도 captureSelectedData를 호출해야 함
+     */
+    captureSelectedData({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
   };
 
   const handleCellMouseEnter = ({ rowIdx, colIdx }: SelectionPoint) => {
