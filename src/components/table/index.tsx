@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 
+import { PAGE_SIZE_OPTIONS } from '@/components/table/constants';
 import {
   getSelectedRange,
   type SelectionPoint,
@@ -39,21 +40,6 @@ type ColumnDataProps = {
 type ColumnKeys = keyof ColumnDataProps;
 type ColumnValue = ColumnDataProps[ColumnKeys];
 
-const PAGE_SIZE_OPTIONS = [
-  {
-    value: 20,
-    label: '20개씩 보기',
-  },
-  {
-    value: 50,
-    label: '50개씩 보기',
-  },
-  {
-    value: 100,
-    label: '100개씩 보기',
-  },
-];
-
 type SelectionRange = Record<ColumnKeys, ColumnValue>;
 
 export const TableComponents: React.FC = () => {
@@ -66,8 +52,6 @@ export const TableComponents: React.FC = () => {
   const [selectedCellData, setSelectedCellData] = useState<SelectionRange[]>(
     [],
   );
-
-  console.log('selectedCellData', selectedCellData);
 
   const columnHelper = createColumnHelper<ColumnDataProps>();
   const columns = [
