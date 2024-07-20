@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useState } from 'react';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 import { PAGE_SIZE_OPTIONS } from '@/components/table/constants';
 import {
@@ -171,6 +172,46 @@ export const TableComponents: React.FC = () => {
       colIdx <= colEnd
     );
   };
+
+  const copySelectedCells = () => {
+    if (selectedCellData.length === 0) {
+      return;
+    }
+
+    const headers = Object.keys(selectedCellData[0]);
+    const rows = selectedCellData.map((row) =>
+      headers
+        .map((header) => {
+          const value = row[header as keyof typeof row];
+          if (typeof value === 'object' && value !== null) {
+            return JSON.stringify(value);
+          }
+          return String(value ?? '');
+        })
+        .join('\t'),
+    );
+
+    const copyText = [headers.join('\t'), ...rows].join('\n');
+
+    navigator.clipboard
+      .writeText(copyText)
+      .then(() => {
+        console.log('Copied to clipboard');
+      })
+      .catch((err) => {
+        console.error('Failed to copy: ', err);
+      });
+  };
+
+  useHotkeys(
+    'ctrl+c',
+    (event) => {
+      event.preventDefault();
+      copySelectedCells();
+    },
+    {},
+    [selectedCellData],
+  );
 
   return (
     <>
