@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useReducer, useCallback } from 'react';
 import {
   getSelectedRange,
   type SelectionPoint,
@@ -7,103 +7,134 @@ import type { ColumnDataProps } from '@/components/table';
 
 type ColumnKeys = keyof ColumnDataProps;
 type ColumnValue = ColumnDataProps[ColumnKeys];
-
 type SelectionRange = Record<ColumnKeys, ColumnValue>;
 
+type State = {
+  isDragging: boolean;
+  selectedRange: { start: SelectionPoint; end: SelectionPoint } | null;
+  selectedCellData: SelectionRange[];
+};
+
+type Action =
+  | { type: 'START_DRAGGING'; payload: SelectionPoint }
+  | { type: 'STOP_DRAGGING' }
+  | { type: 'UPDATE_SELECTION'; payload: SelectionPoint }
+  | { type: 'RESET_SELECTION' }
+  | { type: 'SET_SELECTED_DATA'; payload: SelectionRange[] };
+
+const initialState: State = {
+  isDragging: false,
+  selectedRange: null,
+  selectedCellData: [],
+};
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'START_DRAGGING':
+      return {
+        ...state,
+        isDragging: true,
+        selectedRange: { start: action.payload, end: action.payload },
+      };
+    case 'STOP_DRAGGING':
+      return { ...state, isDragging: false };
+    case 'UPDATE_SELECTION':
+      return state.selectedRange
+        ? {
+            ...state,
+            selectedRange: { ...state.selectedRange, end: action.payload },
+          }
+        : state;
+    case 'RESET_SELECTION':
+      return { ...state, selectedRange: null, selectedCellData: [] };
+    case 'SET_SELECTED_DATA':
+      return { ...state, selectedCellData: action.payload };
+    default:
+      return state;
+  }
+};
+
 export const useSelectableTable = (data) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [selectedRange, setSelectedRange] = useState<{
-    start: SelectionPoint;
-    end: SelectionPoint;
-  } | null>(null);
-  const [selectedCellData, setSelectedCellData] = useState<SelectionRange[]>(
-    [],
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  const handleCellMouseUp = useCallback(() => {
+    dispatch({ type: 'STOP_DRAGGING' });
+  }, []);
+
+  const handleCellMouseDown = useCallback(
+    ({ rowIdx, colIdx }: SelectionPoint) => {
+      dispatch({ type: 'START_DRAGGING', payload: { rowIdx, colIdx } });
+      captureSelectedData({ rowIdx, colIdx }, { rowIdx, colIdx });
+    },
+    [data],
   );
 
-  const handleCellMouseUp = () => {
-    setIsDragging(false);
-  };
+  const handleCellMouseEnter = useCallback(
+    ({ rowIdx, colIdx }: SelectionPoint) => {
+      if (state.isDragging && state.selectedRange) {
+        dispatch({ type: 'UPDATE_SELECTION', payload: { rowIdx, colIdx } });
+        captureSelectedData(state.selectedRange.start, { rowIdx, colIdx });
+      }
+    },
+    [state.isDragging, state.selectedRange, data],
+  );
 
-  const handleCellMouseDown = ({ rowIdx, colIdx }: SelectionPoint) => {
-    setIsDragging(true);
-    setSelectedRange({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
+  const handleCellReset = useCallback(() => {
+    dispatch({ type: 'RESET_SELECTION' });
+  }, []);
 
-    /**
-     * @description
-     * mouseEnter가 mouseDown 보다 먼저 발생하기 때문에, 첫 셀을 클릭하면 capureSelectedData에 반영되지 않음
-     * 즉, mouseDown 이벤트에서도 captureSelectedData를 호출해야 함
-     */
-    captureSelectedData({ start: { rowIdx, colIdx }, end: { rowIdx, colIdx } });
-  };
-
-  const handleCellMouseEnter = ({ rowIdx, colIdx }: SelectionPoint) => {
-    if (isDragging && selectedRange) {
-      captureSelectedData({
-        start: selectedRange?.start,
-        end: { rowIdx, colIdx },
+  const captureSelectedData = useCallback(
+    (start: SelectionPoint, end: SelectionPoint) => {
+      const { rowStart, rowEnd, colStart, colEnd } = getSelectedRange({
+        start,
+        end,
       });
-      setSelectedRange({ start: selectedRange.start, end: { rowIdx, colIdx } });
-    }
-  };
 
-  const handleCellReset = () => {
-    setSelectedRange(null);
-    setSelectedCellData([]);
-  };
+      const selectedData = data.slice(rowStart, rowEnd + 1).map((row) => {
+        return (Object.keys(row) as ColumnKeys[])
+          .slice(colStart, colEnd + 1)
+          .reduce(
+            (
+              acc: Record<ColumnKeys, ColumnDataProps[ColumnKeys]>,
+              key: ColumnKeys,
+            ) => {
+              acc[key] = row[key] as ColumnDataProps[typeof key];
+              return acc;
+            },
+            {} as Record<ColumnKeys, ColumnValue>,
+          );
+      });
 
-  const captureSelectedData = ({
-    start,
-    end,
-  }: {
-    start: SelectionPoint;
-    end: SelectionPoint;
-  }) => {
-    if (!start || !end) return;
+      dispatch({ type: 'SET_SELECTED_DATA', payload: selectedData });
+    },
+    [data],
+  );
 
-    const { rowStart, rowEnd, colStart, colEnd } = getSelectedRange({
-      start,
-      end,
-    });
+  const isCellSelected = useCallback(
+    ({ rowIdx, colIdx }: SelectionPoint): boolean => {
+      if (!state.selectedRange) return false;
 
-    const selectedData = data.slice(rowStart, rowEnd + 1).map((row) => {
-      return (Object.keys(row) as ColumnKeys[])
-        .slice(colStart, colEnd + 1)
-        .reduce(
-          (
-            acc: Record<ColumnKeys, ColumnDataProps[ColumnKeys]>,
-            key: ColumnKeys,
-          ) => {
-            acc[key] = row[key] as ColumnDataProps[typeof key];
-            return acc;
-          },
-          {} as Record<ColumnKeys, ColumnValue>,
-        );
-    });
+      const { rowStart, rowEnd, colStart, colEnd } = getSelectedRange(
+        state.selectedRange,
+      );
 
-    setSelectedCellData(selectedData);
-  };
+      return (
+        rowIdx >= rowStart &&
+        rowIdx <= rowEnd &&
+        colIdx >= colStart &&
+        colIdx <= colEnd
+      );
+    },
+    [state.selectedRange],
+  );
 
-  const isCellSelected = ({ rowIdx, colIdx }: SelectionPoint): boolean => {
-    if (!selectedRange) return false;
-
-    const { rowStart, rowEnd, colStart, colEnd } =
-      getSelectedRange(selectedRange);
-
-    return (
-      rowIdx >= rowStart &&
-      rowIdx <= rowEnd &&
-      colIdx >= colStart &&
-      colIdx <= colEnd
-    );
-  };
-
-  const copySelectedCells = () => {
-    if (selectedCellData.length === 0) {
+  const copySelectedCells = useCallback(() => {
+    if (state.selectedCellData.length === 0) {
       return;
     }
 
-    const headers = Object.keys(selectedCellData[0]);
-    const rows = selectedCellData.map((row) =>
+    const headers = Object.keys(state.selectedCellData[0]);
+    const rows = state.selectedCellData.map((row) =>
       headers
         .map((header) => {
           const value = row[header as keyof typeof row];
@@ -125,10 +156,10 @@ export const useSelectableTable = (data) => {
       .catch((err) => {
         console.error('Failed to copy: ', err);
       });
-  };
+  }, [state.selectedCellData]);
 
   return {
-    selectedCellData,
+    selectedCellData: state.selectedCellData,
     handleCellMouseDown,
     handleCellMouseEnter,
     handleCellMouseUp,
