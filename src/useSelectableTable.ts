@@ -54,7 +54,14 @@ const reducer = (state: State, action: Action): State => {
   }
 };
 
-export const useSelectableTable = (data) => {
+/**
+ * @fixme
+ * type 더 범용적으로
+ */
+
+export const useSelectableTable = <T extends Record<string, ColumnValue>>(
+  data: T[],
+) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const handleCellMouseUp = useCallback(() => {
