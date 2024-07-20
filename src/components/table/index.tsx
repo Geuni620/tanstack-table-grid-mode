@@ -121,6 +121,11 @@ export const TableComponents: React.FC = () => {
     }
   };
 
+  const handleCellReset = () => {
+    setSelectedRange(null);
+    setSelectedCellData([]);
+  };
+
   const captureSelectedData = ({
     start,
     end,
@@ -175,6 +180,7 @@ export const TableComponents: React.FC = () => {
           className="my-2 rounded-[4px] border-[1px] py-1 pl-2 pr-9 text-sm"
           value={table.getState().pagination.pageSize}
           onChange={(e) => {
+            handleCellReset();
             table.setPageSize(Number(e.target.value));
           }}
         >
@@ -244,7 +250,10 @@ export const TableComponents: React.FC = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => table.previousPage()}
+          onClick={() => {
+            handleCellReset();
+            table.previousPage();
+          }}
           disabled={!table.getCanPreviousPage()}
         >
           {'‹'}
@@ -259,7 +268,10 @@ export const TableComponents: React.FC = () => {
           variant="outline"
           size="sm"
           disabled={!table.getCanNextPage()}
-          onClick={() => table.nextPage()}
+          onClick={() => {
+            handleCellReset();
+            table.nextPage();
+          }}
         >
           {'›'}
         </Button>
