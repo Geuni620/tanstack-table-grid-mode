@@ -7,11 +7,10 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
 import { PAGE_SIZE_OPTIONS } from '@/components/table/constants';
-
 import { Button } from '@/components/ui/button';
 import {
   Table,
